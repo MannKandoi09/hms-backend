@@ -1,66 +1,52 @@
 package com.hms.hmsbackend.controller;
 
 import com.hms.hmsbackend.entity.Patient;
-import com.hms.hmsbackend.repository.PatientRepository;
-import org.springframework.http.ResponseEntity;
+import com.hms.hmsbackend.service.PatientService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/patients")
+@CrossOrigin(origins = "http://localhost:3000")
 public class PatientController {
 
-    private final PatientRepository patientRepository;
+    @Autowired
+    private PatientService patientService;
 
-    public PatientController(PatientRepository patientRepository) {
-        this.patientRepository = patientRepository;
-    }
-
-    // CREATE
-    @PostMapping
-    public ResponseEntity<Patient> create(@RequestBody Patient p) {
-        if (p.getUser() == null && (p.getDob() == null && p.getGender() == null
-                && p.getBloodGroup() == null && p.getAddress() == null)) {
-            // beginner-friendly: allow minimal record with just nullables; real app will validate
-        }
-        Patient saved = patientRepository.save(p);
-        return ResponseEntity.ok(saved);
-    }
-
-    // READ all
     @GetMapping
-    public List<Patient> findAll() {
-        return patientRepository.findAll();
-    }
+    public List<Patient> getAll() { return patientService.getAllPatients(); }
 
-    // READ by id
     @GetMapping("/{id}")
-    public ResponseEntity<Patient> findById(@PathVariable Long id) {
-        return patientRepository.findById(id)
-                .map(ResponseEntity::ok)
+    public ResponseEntity<Patient> getById(@PathVariable Long id){
+        return patientService.getPatientById(id)
+                .map(p -> ResponseEntity.ok(p))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // UPDATE
+    @PostMapping
+    public Patient create(@RequestBody Patient p){ return patientService.savePatient(p); }
+
     @PutMapping("/{id}")
-    public ResponseEntity<Patient> update(@PathVariable Long id, @RequestBody Patient body) {
-        return patientRepository.findById(id).map(p -> {
-            p.setDob(body.getDob());
-            p.setGender(body.getGender());
-            p.setBloodGroup(body.getBloodGroup());
-            p.setAddress(body.getAddress());
-            Patient updated = patientRepository.save(p);
-            return ResponseEntity.ok(updated);
-        }).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Patient> update(@PathVariable Long id, @RequestBody Patient p){
+        return patientService.getPatientById(id)
+                .map(existing -> {
+                    existing.setName(p.getName());
+                    existing.setAge(p.getAge());
+                    existing.setPhone(p.getPhone());
+                    existing.setEmail(p.getEmail());
+                    existing.setAddress(p.getAddress());
+                    return ResponseEntity.ok(patientService.savePatient(existing));
+                }).orElse(ResponseEntity.notFound().build());
     }
 
-    // DELETE
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (patientRepository.existsById(id)) {
-            patientRepository.deleteById(id);
-            return ResponseEntity.ok().build();
+    public ResponseEntity<Void> delete(@PathVariable Long id){
+        if(patientService.getPatientById(id).isPresent()){
+            patientService.deletePatient(id);
+            return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
     }
